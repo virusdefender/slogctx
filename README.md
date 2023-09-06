@@ -30,3 +30,5 @@ the output is
 time=.. level=ERROR msg="error msg" ctx_uid=<nil> ctx_request_id=<nil>
 time=.. level=ERROR msg="error msg with context" ctx_uid=123 ctx_request_id=abcdef
 ```
+
+Playground: https://go.dev/play/p/MU0opRrNbIW
