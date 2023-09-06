@@ -17,6 +17,8 @@ type HandlerOptions struct {
 	// for example, if AttrsFromCtx contains "trace_id", and AttrPrefix is "ctx_",
 	// then the record will contain "ctx_trace_id" instead of "trace_id"
 	AttrPrefix string
+	// still show nil value in the log if some attr key is not found in the context
+	ShowNilValue bool
 
 	cachedAttrKey []string
 }
@@ -42,10 +44,12 @@ func (h *Handler) WithGroup(name string) slog.Handler {
 }
 
 func (h *Handler) Handle(ctx context.Context, record slog.Record) error {
-	attrs := make([]slog.Attr, len(h.options.AttrsFromCtx))
+	attrs := make([]slog.Attr, 0, len(h.options.AttrsFromCtx))
 	for idx, key := range h.options.AttrsFromCtx {
 		ctxVal := ctx.Value(key)
-		attrs[idx] = slog.Any(h.options.cachedAttrKey[idx], ctxVal)
+		if h.options.ShowNilValue || ctxVal != nil {
+			attrs = append(attrs, slog.Any(h.options.cachedAttrKey[idx], ctxVal))
+		}
 	}
 	record.AddAttrs(attrs...)
 	return h.parent.Handle(ctx, record)
