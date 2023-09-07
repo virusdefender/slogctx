@@ -21,7 +21,7 @@ type LogItem struct {
 	CtxNotFound  *string `json:"ctx_not_found"`
 }
 
-func TestSlogCtxSourceLocation(t *testing.T) {
+func TestSourceLocation(t *testing.T) {
 	buf := &bytes.Buffer{}
 	h := NewHandler(
 		slog.NewJSONHandler(buf, &slog.HandlerOptions{AddSource: true}),
@@ -43,7 +43,7 @@ func TestSlogCtxSourceLocation(t *testing.T) {
 	}
 }
 
-func testSlogCtxWithContextValues(t *testing.T, showNilValue bool) {
+func testContextValues(t *testing.T, showNilValue bool) {
 	buf := &bytes.Buffer{}
 	h := NewHandler(
 		slog.NewJSONHandler(buf, &slog.HandlerOptions{AddSource: true}),
@@ -76,7 +76,41 @@ func testSlogCtxWithContextValues(t *testing.T, showNilValue bool) {
 	}
 }
 
-func TestSlogCtxWithContextValues(t *testing.T) {
-	testSlogCtxWithContextValues(t, false)
-	testSlogCtxWithContextValues(t, true)
+func TestContextValues(t *testing.T) {
+	testContextValues(t, false)
+	testContextValues(t, true)
+}
+
+func TestWithAttr(t *testing.T) {
+	buf := &bytes.Buffer{}
+	h := NewHandler(
+		slog.NewTextHandler(buf, nil),
+		&HandlerOptions{AttrsFromCtx: []string{"uid"}})
+
+	logger := slog.New(h).With("foo", "bar")
+
+	logger.ErrorContext(context.WithValue(context.Background(), "uid", 123), "error msg", "a", "b")
+
+	logString := buf.String()
+	fmt.Println(logString)
+	if !strings.Contains(logString, `foo=bar a=b uid=123`) {
+		t.Fatalf("unexpected log line")
+	}
+}
+
+func TestWithGroup(t *testing.T) {
+	buf := &bytes.Buffer{}
+	h := NewHandler(
+		slog.NewTextHandler(buf, nil),
+		&HandlerOptions{AttrsFromCtx: []string{"uid"}})
+
+	logger := slog.New(h).WithGroup("group_name")
+
+	logger.ErrorContext(context.WithValue(context.Background(), "uid", 123), "error msg", "a", "b")
+
+	logString := buf.String()
+	fmt.Println(logString)
+	if !strings.Contains(logString, `group_name.a=b group_name.uid=123`) {
+		t.Fatalf("unexpected log line")
+	}
 }

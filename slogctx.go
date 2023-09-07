@@ -36,11 +36,11 @@ func (h *Handler) Enabled(ctx context.Context, level slog.Level) bool {
 }
 
 func (h *Handler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return h.parent.WithAttrs(attrs)
+	return &Handler{parent: h.parent.WithAttrs(attrs), options: h.options}
 }
 
 func (h *Handler) WithGroup(name string) slog.Handler {
-	return h.parent.WithGroup(name)
+	return &Handler{parent: h.parent.WithGroup(name), options: h.options}
 }
 
 func (h *Handler) Handle(ctx context.Context, record slog.Record) error {
