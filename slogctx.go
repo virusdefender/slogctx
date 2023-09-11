@@ -2,6 +2,7 @@ package slogctx
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 )
 
@@ -12,11 +13,10 @@ type Handler struct {
 
 type HandlerOptions struct {
 	// get these attrs from context and add to record
-	AttrsFromCtx []string
-	// add prefix to attrs to avoid conflict
-	// for example, if AttrsFromCtx contains "trace_id", and AttrPrefix is "ctx_",
-	// then the record will contain "ctx_trace_id" instead of "trace_id"
-	AttrPrefix string
+	AttrsFromCtx []any
+	// to avoid conflict, context value key can be any type, so we need a map to convert it to string
+	// it's not necessary to add it if the key can be converted to string directly
+	AttrsNameMap map[any]string
 	// still show nil value in the log if some attr key is not found in the context
 	ShowNilValue bool
 
@@ -26,7 +26,11 @@ type HandlerOptions struct {
 func NewHandler(parent slog.Handler, options *HandlerOptions) slog.Handler {
 	options.cachedAttrKey = make([]string, len(options.AttrsFromCtx))
 	for idx, key := range options.AttrsFromCtx {
-		options.cachedAttrKey[idx] = options.AttrPrefix + key
+		k, exists := options.AttrsNameMap[key]
+		if !exists {
+			k = fmt.Sprintf("%v", key)
+		}
+		options.cachedAttrKey[idx] = k
 	}
 	return &Handler{parent: parent, options: options}
 }

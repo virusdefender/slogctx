@@ -8,27 +8,37 @@ However, the default handler in slog does not record the context values, this li
 ## Demo
 
 ```go
+package main
+
+import (
+	"context"
+	"github.com/virusdefender/slogctx"
+	"log/slog"
+	"os"
+)
+
+type UserId struct{}
+
 func main() {
+
 	h := slogctx.NewHandler(
-		slog.NewTextHandler(os.Stdout, nil),
+		slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
 		&slogctx.HandlerOptions{
-			AttrsFromCtx: []string{"uid", "request_id"},
-			AttrPrefix:   "ctx_",
+			AttrsFromCtx: []any{"request_id", UserId{}},
+			AttrsNameMap: map[any]string{UserId{}: "uid"},
 		})
+
 	logger := slog.New(h)
 	ctx := context.WithValue(
-		context.WithValue(context.Background(), "uid", 123), 
+		context.WithValue(context.Background(), UserId{}, 123),
 		"request_id", "abcdef")
-	logger.Error("error msg")
 	logger.ErrorContext(ctx, "error msg with context")
 }
+
 ```
 
 the output is
 
 ```
-time=.. level=ERROR msg="error msg" ctx_uid=<nil> ctx_request_id=<nil>
-time=.. level=ERROR msg="error msg with context" ctx_uid=123 ctx_request_id=abcdef
+time=.. level=ERROR msg="error msg with context" request_id=abcdef uid=123
 ```
-
-Playground: https://go.dev/play/p/MU0opRrNbIW

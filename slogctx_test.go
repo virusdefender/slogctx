@@ -16,9 +16,9 @@ type LogItem struct {
 		File string `json:"file"`
 		Line int    `json:"line"`
 	}
-	CtxUid       *int    `json:"ctx_uid"`
-	CtxRequestId *string `json:"ctx_request_id"`
-	CtxNotFound  *string `json:"ctx_not_found"`
+	Userid    *int    `json:"uid"`
+	RequestId *string `json:"request_id"`
+	NotFound  *string `json:"not_found"`
 }
 
 func TestSourceLocation(t *testing.T) {
@@ -43,18 +43,25 @@ func TestSourceLocation(t *testing.T) {
 	}
 }
 
+type RequestId string
+type UserId struct{}
+
 func testContextValues(t *testing.T, showNilValue bool) {
 	buf := &bytes.Buffer{}
 	h := NewHandler(
 		slog.NewJSONHandler(buf, &slog.HandlerOptions{AddSource: true}),
 		&HandlerOptions{
-			AttrsFromCtx: []string{"uid", "request_id", "not_found"},
-			AttrPrefix:   "ctx_",
+			AttrsFromCtx: []any{"url", RequestId("request_id"), UserId{}, "not_found"},
+			AttrsNameMap: map[any]string{UserId{}: "uid"},
 			ShowNilValue: showNilValue,
 		})
 	logger := slog.New(h)
 
-	ctx := context.WithValue(context.WithValue(context.Background(), "uid", 123), "request_id", "abcdef")
+	ctx := context.Background()
+	ctx = context.WithValue(ctx, "url", "https://example.com/api")
+	ctx = context.WithValue(ctx, RequestId("request_id"), "abcdef")
+	ctx = context.WithValue(ctx, UserId{}, 123)
+
 	logger.ErrorContext(ctx, "error msg with context")
 
 	logString := buf.String()
@@ -65,13 +72,13 @@ func testContextValues(t *testing.T, showNilValue bool) {
 	if err != nil {
 		t.Fatalf("unmarshal line %s failed: %s", logString, err)
 	}
-	if *logItem.CtxUid != 123 || *logItem.CtxRequestId != "abcdef" || logItem.CtxNotFound != nil {
+	if *logItem.Userid != 123 || *logItem.RequestId != "abcdef" || logItem.NotFound != nil {
 		t.Fatalf("unexpected log line")
 	}
 
-	if showNilValue && !strings.Contains(logString, `"ctx_not_found":null`) {
+	if showNilValue && !strings.Contains(logString, `"not_found":null`) {
 		t.Fatalf("unexpected log line")
-	} else if !showNilValue && strings.Contains(logString, `"ctx_not_found":null`) {
+	} else if !showNilValue && strings.Contains(logString, `"not_found":null`) {
 		t.Fatalf("unexpected log line")
 	}
 }
@@ -85,7 +92,7 @@ func TestWithAttr(t *testing.T) {
 	buf := &bytes.Buffer{}
 	h := NewHandler(
 		slog.NewTextHandler(buf, nil),
-		&HandlerOptions{AttrsFromCtx: []string{"uid"}})
+		&HandlerOptions{AttrsFromCtx: []any{"uid"}})
 
 	logger := slog.New(h).With("foo", "bar")
 
@@ -102,7 +109,7 @@ func TestWithGroup(t *testing.T) {
 	buf := &bytes.Buffer{}
 	h := NewHandler(
 		slog.NewTextHandler(buf, nil),
-		&HandlerOptions{AttrsFromCtx: []string{"uid"}})
+		&HandlerOptions{AttrsFromCtx: []any{"uid"}})
 
 	logger := slog.New(h).WithGroup("group_name")
 
